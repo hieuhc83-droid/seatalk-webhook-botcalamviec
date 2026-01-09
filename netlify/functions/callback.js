@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");  
+// ❗ Không cần require("node-fetch") nữa vì Netlify Node18+ có global fetch  
   
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;  
 const BOT_TOKEN = process.env.SEATALK_BOT_TOKEN;  
@@ -95,7 +95,7 @@ async function sendMainMenu(chatId) {
 }  
   
 // =====================================================  
-// DEMO CALENDAR  
+// DEMO CALENDAR (3 MÀU)  
 // =====================================================  
 async function showCalendar(chatId) {  
   const days = [  
@@ -104,7 +104,7 @@ async function showCalendar(chatId) {
     { date: "2024-03-13", label: "13🟥⚠", type: "red" }  
   ];  
   
-  const buttons = days.map(d => ({  
+  const buttons = days.map((d) => ({  
     text: d.label,  
     action_id: "DAY_SELECTED",  
     value: JSON.stringify(d)  
@@ -117,10 +117,9 @@ async function showCalendar(chatId) {
 }  
   
 // =====================================================  
-// HANDLE DAY SELECTED  
+// HANDLE CHỌN NGÀY  
 // =====================================================  
 async function handleDay(chatId, day) {  
-  // GREEN  
   if (day.type === "green") {  
     return sendInteractive(chatId, {  
       text: `🟩 Bạn muốn OFF ngày ${day.date}?`,  
@@ -131,7 +130,6 @@ async function handleDay(chatId, day) {
     });  
   }  
   
-  // YELLOW  
   if (day.type === "yellow") {  
     return sendInteractive(chatId, {  
       text: `🟨 Ngày ${day.date} đã có người OFF.`,  
@@ -142,7 +140,6 @@ async function handleDay(chatId, day) {
     });  
   }  
   
-  // RED  
   if (day.type === "red") {  
     return sendMessage(  
       chatId,  
@@ -152,7 +149,7 @@ async function handleDay(chatId, day) {
 }  
   
 // =====================================================  
-// SEND OFF REQUEST TO APPS SCRIPT  
+// SUBMIT OFF REQUEST → GOOGLE SHEET  
 // =====================================================  
 async function requestOff(chatId, date) {  
   await fetch(APPS_SCRIPT_URL, {  
@@ -170,7 +167,7 @@ async function requestOff(chatId, date) {
 }  
   
 // =====================================================  
-// SAVE CHAT ID  
+// LƯU CHAT ID  
 // =====================================================  
 async function saveChatId(EmployeeID, ChatID) {  
   await fetch(APPS_SCRIPT_URL, {  
@@ -185,28 +182,32 @@ async function saveChatId(EmployeeID, ChatID) {
 }  
   
 // =====================================================  
-// SEND MESSAGE  
+// GỬI TIN NHẮN TEXT  
 // =====================================================  
 async function sendMessage(chatId, text) {  
   await fetch("https://open.seatalk.io/api/v2/bot/send_message", {  
     method: "POST",  
     headers: {  
-      "Authorization": "Bearer " + BOT_TOKEN,  
+      Authorization: "Bearer " + BOT_TOKEN,  
       "Content-Type": "application/json"  
     },  
-    body: JSON.stringify({ chat_id: chatId, text })  
+    body: JSON.stringify({  
+      chat_id: chatId,  
+      text  
+    })  
   });  
+  
   return respond("OK");  
 }  
   
 // =====================================================  
-// SEND BUTTON MESSAGE  
+// GỬI TIN NHẮN BUTTON  
 // =====================================================  
 async function sendInteractive(chatId, data) {  
   await fetch("https://open.seatalk.io/api/v2/bot/send_message", {  
     method: "POST",  
     headers: {  
-      "Authorization": "Bearer " + BOT_TOKEN,  
+      Authorization: "Bearer " + BOT_TOKEN,  
       "Content-Type": "application/json"  
     },  
     body: JSON.stringify({  
@@ -215,6 +216,7 @@ async function sendInteractive(chatId, data) {
       actions: data.buttons  
     })  
   });  
+  
   return respond("OK");  
 }  
   
