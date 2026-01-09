@@ -1,33 +1,70 @@
+const crypto = require("crypto");  
+  
 exports.handler = async (event) => {  
-  console.log("=== CALLBACK TRIGGERED ===");       // debug 1  
-  console.log("RAW EVENT:", event);                // debug 2  
-  console.log("BODY STRING:", event.body);         // debug 3  
   
-  try {  
-    const body = JSON.parse(event.body || "{}");  
-    console.log("PARSED BODY:", body);             // debug 4  
+  console.log("=== CALLBACK TRIGGERED ===");  
   
-    if (body.event_type === "event_verification") {  
-      console.log("=== VERIFICATION RECEIVED ===");  // debug 5  
-      const token = body?.event?.seatalk_challenge || "";  
+  const signingSecret = process.env.SEATALK_SIGNING_SECRET || "";  
+  
+  const signature = event.headers["signature"] || "";  
+  
+  const rawBody = event.body || "";  
+  
+  console.log("RAW EVENT:", event);  
+  console.log("BODY STRING:", rawBody);  
+  
+  // --- (1) VERIFY SIGNATURE (VERY IMPORTANT)  
+  if (signingSecret) {  
+    const expected = crypto  
+      .createHash("sha256")  
+      .update(rawBody + signingSecret)  
+      .digest("hex");  
+  
+    console.log("EXPECTED SIG:", expected);  
+    console.log("RECEIVED SIG:", signature);  
+  
+    if (signature !== expected) {  
+      console.log("SIGNATURE MISMATCH!");  
       return {  
-        statusCode: 200,  
-        headers: { "Content-Type": "application/json" },  
-        body: JSON.stringify({ seatalk_challenge: token })  
+        statusCode: 403,  
+        body: "Invalid signature"  
       };  
     }  
+  }  
   
-    console.log("=== NORMAL EVENT RECEIVED ===");   // debug 6  
-    return {  
-      statusCode: 200,  
-      body: JSON.stringify({ status: "ok" })  
-    };  
-  
+  // --- (2) PARSE BODY  
+  let body = {};  
+  try {  
+    body = JSON.parse(rawBody);  
   } catch (err) {  
-    console.log("=== ERROR PARSING ===", err);      // debug 7  
+    console.log("ERROR PARSING:", err);  
     return {  
-      statusCode: 500,  
-      body: "Server error"  
+      statusCode: 400,  
+      body: "Bad JSON"  
     };  
   }  
+  
+  console.log("PARSED BODY:", body);  
+  
+  // --- (3) HANDLE event_verification  
+  if (body.event_type === "event_verification") {  
+    console.log("=== VERIFICATION RECEIVED ===");  
+  
+    const challenge = body?.event?.seatalk_challenge;  
+  
+    return {  
+      statusCode: 200,  
+      headers: { "Content-Type": "application/json" },  
+      body: JSON.stringify({ seatalk_challenge: challenge })  
+    };  
+  }  
+  
+  // --- (4) OTHER EVENTS  
+  console.log("=== NORMAL EVENT RECEIVED ===");  
+  
+  return {  
+    statusCode: 200,  
+    headers: { "Content-Type": "application/json" },  
+    body: JSON.stringify({ status: "ok" })  
+  };  
 };
