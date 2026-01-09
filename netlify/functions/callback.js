@@ -1,5 +1,4 @@
-// ❗ Không cần require("node-fetch") nữa vì Netlify Node18+ có global fetch  
-  
+// Netlify Function - NO NEED node-fetch, use global fetch  
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;  
 const BOT_TOKEN = process.env.SEATALK_BOT_TOKEN;  
   
@@ -19,12 +18,12 @@ exports.handler = async (event) => {
       });  
     }  
   
-    // (2) USER SENDS MESSAGE  
+    // (2) USER MESSAGE  
     if (type === "message_from_bot_subscriber") {  
       return await handleUserMessage(body);  
     }  
   
-    // (3) USER CLICKS BUTTON  
+    // (3) USER CLICK BUTTON  
     if (type === "interactive_message_click") {  
       return await handleButton(body);  
     }  
@@ -42,16 +41,17 @@ exports.handler = async (event) => {
 // =====================================================  
 async function handleUserMessage(body) {  
   const chatId = body.event.chat_id;  
-  const text = body.event.text?.trim();  
+  const rawText = body.event.text || "";   // SAFE  
+  const text = rawText.trim().toLowerCase(); // SAFE  
   
-  // CASE 1 — USER NHẬP MÃ NHÂN VIÊN (VD NV001)  
-  if (/^NV/i.test(text)) {  
-    await saveChatId(text, chatId);  
+  // CASE 1 — USER NHẬP MÃ NV (NV001…)  
+  if (/^nv\d+/i.test(rawText.trim())) {  
+    await saveChatId(rawText.trim(), chatId);  
     return sendMessage(chatId, "Đã ghi nhận mã nhân viên của bạn ✔");  
   }  
   
   // CASE 2 — MENU  
-  if (text.toLowerCase() === "menu") {  
+  if (text === "menu") {  
     return sendMainMenu(chatId);  
   }  
   
@@ -83,19 +83,23 @@ async function handleButton(body) {
 }  
   
 // =====================================================  
-// SHOW MENU  
+// MAIN MENU  
 // =====================================================  
 async function sendMainMenu(chatId) {  
   return sendInteractive(chatId, {  
     text: "📌 MENU CHÍNH",  
     buttons: [  
-      { text: "📅 Đăng ký OFF", action_id: "BTN_REGISTER_OFF", value: "" }  
+      {  
+        text: "📅 Đăng ký OFF",  
+        action_id: "BTN_REGISTER_OFF",  
+        value: ""  
+      }  
     ]  
   });  
 }  
   
 // =====================================================  
-// DEMO CALENDAR (3 MÀU)  
+// DEMO CALENDAR  
 // =====================================================  
 async function showCalendar(chatId) {  
   const days = [  
@@ -104,7 +108,7 @@ async function showCalendar(chatId) {
     { date: "2024-03-13", label: "13🟥⚠", type: "red" }  
   ];  
   
-  const buttons = days.map((d) => ({  
+  const buttons = days.map(d => ({  
     text: d.label,  
     action_id: "DAY_SELECTED",  
     value: JSON.stringify(d)  
@@ -117,7 +121,7 @@ async function showCalendar(chatId) {
 }  
   
 // =====================================================  
-// HANDLE CHỌN NGÀY  
+// HANDLE DAY SELECTED  
 // =====================================================  
 async function handleDay(chatId, day) {  
   if (day.type === "green") {  
@@ -141,15 +145,14 @@ async function handleDay(chatId, day) {
   }  
   
   if (day.type === "red") {  
-    return sendMessage(  
-      chatId,  
+    return sendMessage(chatId,  
       `🟥⚠ Ngày ${day.date} bị hạn chế OFF.\nVui lòng nhập lý do.`  
     );  
   }  
 }  
   
 // =====================================================  
-// SUBMIT OFF REQUEST → GOOGLE SHEET  
+// SAVE OFF REQUEST → GOOGLE SHEET  
 // =====================================================  
 async function requestOff(chatId, date) {  
   await fetch(APPS_SCRIPT_URL, {  
@@ -167,7 +170,7 @@ async function requestOff(chatId, date) {
 }  
   
 // =====================================================  
-// LƯU CHAT ID  
+// SAVE CHAT ID  
 // =====================================================  
 async function saveChatId(EmployeeID, ChatID) {  
   await fetch(APPS_SCRIPT_URL, {  
@@ -182,7 +185,7 @@ async function saveChatId(EmployeeID, ChatID) {
 }  
   
 // =====================================================  
-// GỬI TIN NHẮN TEXT  
+// SEND TEXT MESSAGE  
 // =====================================================  
 async function sendMessage(chatId, text) {  
   await fetch("https://open.seatalk.io/api/v2/bot/send_message", {  
@@ -191,17 +194,14 @@ async function sendMessage(chatId, text) {
       Authorization: "Bearer " + BOT_TOKEN,  
       "Content-Type": "application/json"  
     },  
-    body: JSON.stringify({  
-      chat_id: chatId,  
-      text  
-    })  
+    body: JSON.stringify({ chat_id: chatId, text })  
   });  
   
   return respond("OK");  
 }  
   
 // =====================================================  
-// GỬI TIN NHẮN BUTTON  
+// SEND BUTTON MESSAGE  
 // =====================================================  
 async function sendInteractive(chatId, data) {  
   await fetch("https://open.seatalk.io/api/v2/bot/send_message", {  
