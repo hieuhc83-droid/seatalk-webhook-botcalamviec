@@ -1,4 +1,4 @@
-// Netlify Function - NO NEED node-fetch, use global fetch  
+// Netlify Function - using global fetch (Node18+)  
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;  
 const BOT_TOKEN = process.env.SEATALK_BOT_TOKEN;  
   
@@ -11,11 +11,15 @@ exports.handler = async (event) => {
     const body = JSON.parse(bodyString);  
     const type = body.event_type;  
   
-    // (1) VERIFY CALLBACK URL  
+    // (1) VERIFY CALLBACK URL (MOST IMPORTANT)  
     if (type === "event_verification") {  
-      return respond({  
-        seatalk_challenge: body.event.seatalk_challenge  
-      });  
+      const challenge = body?.event?.seatalk_challenge;  
+  
+      return {  
+        statusCode: 200,  
+        headers: { "Content-Type": "application/json" },  
+        body: JSON.stringify({ seatalk_challenge: challenge })  
+      };  
     }  
   
     // (2) USER MESSAGE  
@@ -23,7 +27,7 @@ exports.handler = async (event) => {
       return await handleUserMessage(body);  
     }  
   
-    // (3) USER CLICK BUTTON  
+    // (3) BUTTON CLICK  
     if (type === "interactive_message_click") {  
       return await handleButton(body);  
     }  
@@ -41,16 +45,14 @@ exports.handler = async (event) => {
 // =====================================================  
 async function handleUserMessage(body) {  
   const chatId = body.event.chat_id;  
-  const rawText = body.event.text || "";   // SAFE  
-  const text = rawText.trim().toLowerCase(); // SAFE  
+  const rawText = body.event.text || "";     
+  const text = rawText.trim().toLowerCase();   
   
-  // CASE 1 — USER NHẬP MÃ NV (NV001…)  
   if (/^nv\d+/i.test(rawText.trim())) {  
     await saveChatId(rawText.trim(), chatId);  
     return sendMessage(chatId, "Đã ghi nhận mã nhân viên của bạn ✔");  
   }  
   
-  // CASE 2 — MENU  
   if (text === "menu") {  
     return sendMainMenu(chatId);  
   }  
@@ -89,17 +91,13 @@ async function sendMainMenu(chatId) {
   return sendInteractive(chatId, {  
     text: "📌 MENU CHÍNH",  
     buttons: [  
-      {  
-        text: "📅 Đăng ký OFF",  
-        action_id: "BTN_REGISTER_OFF",  
-        value: ""  
-      }  
+      { text: "📅 Đăng ký OFF", action_id: "BTN_REGISTER_OFF", value: "" }  
     ]  
   });  
 }  
   
 // =====================================================  
-// DEMO CALENDAR  
+// CALENDAR DEMO  
 // =====================================================  
 async function showCalendar(chatId) {  
   const days = [  
@@ -108,7 +106,7 @@ async function showCalendar(chatId) {
     { date: "2024-03-13", label: "13🟥⚠", type: "red" }  
   ];  
   
-  const buttons = days.map(d => ({  
+  const buttons = days.map((d) => ({  
     text: d.label,  
     action_id: "DAY_SELECTED",  
     value: JSON.stringify(d)  
@@ -145,14 +143,15 @@ async function handleDay(chatId, day) {
   }  
   
   if (day.type === "red") {  
-    return sendMessage(chatId,  
+    return sendMessage(  
+      chatId,  
       `🟥⚠ Ngày ${day.date} bị hạn chế OFF.\nVui lòng nhập lý do.`  
     );  
   }  
 }  
   
 // =====================================================  
-// SAVE OFF REQUEST → GOOGLE SHEET  
+// SEND OFF REQUEST → GOOGLE SHEET  
 // =====================================================  
 async function requestOff(chatId, date) {  
   await fetch(APPS_SCRIPT_URL, {  
