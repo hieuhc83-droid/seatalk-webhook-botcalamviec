@@ -1,7 +1,21 @@
 const crypto = require("crypto");  
   
 exports.handler = async (event) => {  
+  
   console.log("=== CALLBACK TRIGGERED ===");  
+  
+  // --- 0. BLOCK GET REQUESTS (VERY IMPORTANT)  
+  if (event.httpMethod === "GET") {  
+    return {  
+      statusCode: 200,  
+      headers: {  
+        "Content-Type": "application/json; charset=utf-8",  
+        "X-Content-Type-Options": "nosniff"  
+      },  
+      body: JSON.stringify({ status: "ok" })  
+    };  
+  }  
+  
   console.log("RAW EVENT:", event);  
   console.log("BODY STRING:", event.body);  
   
@@ -59,7 +73,7 @@ exports.handler = async (event) => {
     };  
   }  
   
-  // --- 4. All other events ---  
+  // --- 4. Other events ---  
   return {  
     statusCode: 200,  
     headers: { "Content-Type": "application/json; charset=utf-8" },  
