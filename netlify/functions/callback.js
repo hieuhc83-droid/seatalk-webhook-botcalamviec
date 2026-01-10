@@ -1,10 +1,9 @@
 const crypto = require("crypto");  
   
 exports.handler = async (event) => {  
-  
   console.log("=== CALLBACK TRIGGERED ===");  
   
-  // --- 0. BLOCK GET REQUESTS (VERY IMPORTANT)  
+  // BLOCK GET (browser)  
   if (event.httpMethod === "GET") {  
     return {  
       statusCode: 200,  
@@ -43,11 +42,12 @@ exports.handler = async (event) => {
     }  
   }  
   
-  // --- 2. Parse JSON body ---  
+  // --- 2. Parse request body ---  
   let body = {};  
   try {  
     body = JSON.parse(rawBody);  
   } catch (err) {  
+    console.log("JSON PARSE ERROR");  
     return {  
       statusCode: 400,  
       headers: { "Content-Type": "text/plain" },  
@@ -57,7 +57,7 @@ exports.handler = async (event) => {
   
   console.log("PARSED BODY:", body);  
   
-  // --- 3. Handle verification ---  
+  // --- 3. Handle event_verification ---  
   if (body.event_type === "event_verification") {  
     console.log("=== VERIFICATION RECEIVED ===");  
   
@@ -73,7 +73,7 @@ exports.handler = async (event) => {
     };  
   }  
   
-  // --- 4. Other events ---  
+  // --- 4. Normal events ---  
   return {  
     statusCode: 200,  
     headers: { "Content-Type": "application/json; charset=utf-8" },  
