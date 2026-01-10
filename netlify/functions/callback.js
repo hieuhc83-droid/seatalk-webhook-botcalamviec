@@ -1,6 +1,7 @@
 const crypto = require("crypto");  
   
 exports.handler = async (event) => {  
+  
   console.log("=== CALLBACK TRIGGERED ===");  
   
   // BLOCK GET (browser)  
@@ -22,7 +23,7 @@ exports.handler = async (event) => {
   const signature = event.headers["signature"] || "";  
   const rawBody = event.body || "";  
   
-  // --- 1. Verify signature ---  
+  // 1. VERIFY SIGNATURE  
   if (signingSecret) {  
     const expected = crypto  
       .createHash("sha256")  
@@ -36,28 +37,33 @@ exports.handler = async (event) => {
       console.log("SIGNATURE MISMATCH");  
       return {  
         statusCode: 403,  
-        headers: { "Content-Type": "text/plain" },  
+        headers: {  
+          "Content-Type": "text/plain",  
+          "X-Content-Type-Options": "nosniff"  
+        },  
         body: "Invalid signature"  
       };  
     }  
   }  
   
-  // --- 2. Parse request body ---  
+  // 2. PARSE BODY  
   let body = {};  
   try {  
     body = JSON.parse(rawBody);  
   } catch (err) {  
-    console.log("JSON PARSE ERROR");  
     return {  
       statusCode: 400,  
-      headers: { "Content-Type": "text/plain" },  
+      headers: {  
+        "Content-Type": "text/plain",  
+        "X-Content-Type-Options": "nosniff"  
+      },  
       body: "Bad JSON"  
     };  
   }  
   
   console.log("PARSED BODY:", body);  
   
-  // --- 3. Handle event_verification ---  
+  // 3. HANDLE SEATALK VERIFY EVENT  
   if (body.event_type === "event_verification") {  
     console.log("=== VERIFICATION RECEIVED ===");  
   
@@ -73,10 +79,13 @@ exports.handler = async (event) => {
     };  
   }  
   
-  // --- 4. Normal events ---  
+  // 4. NORMAL EVENT  
   return {  
     statusCode: 200,  
-    headers: { "Content-Type": "application/json; charset=utf-8" },  
+    headers: {  
+      "Content-Type": "application/json; charset=utf-8",  
+      "X-Content-Type-Options": "nosniff"  
+    },  
     body: JSON.stringify({ status: "ok" })  
   };  
 };
